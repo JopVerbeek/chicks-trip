@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chicks Trip 🏡 — 13-15 november 2026</title>
+  <meta name="description" content="Overzicht en stemming voor onze weekendhuisjes (13-15 november 2026)." />
+
+  <!-- Leaflet map (OpenStreetMap, gratis, geen API key) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Login-scherm (groepswachtwoord) -->
+  <div id="gate" class="gate" hidden>
+    <div class="gate-box">
+      <div class="gate-emoji">🔒🏡</div>
+      <h2>Chicks Trip</h2>
+      <p>Vul het groepswachtwoord in om de huisjes te bekijken en te stemmen.</p>
+      <form id="gate-form" autocomplete="off">
+        <input id="gate-input" type="password" placeholder="Groepswachtwoord" aria-label="Groepswachtwoord" />
+        <button type="submit" class="btn btn-primary">Naar binnen →</button>
+      </form>
+      <p id="gate-error" class="gate-error" hidden>Onjuist wachtwoord — probeer het nog eens.</p>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Weekendje weg met de chicks</p>
+      <h1>Kies ons huisje 🏡</h1>
+      <p class="dates">📅 13 – 15 november 2026 · 👯 ± 10 personen</p>
+      <p class="tagline">Bekijk de opties, zet ze op de kaart en <strong>stem</strong> op je favorieten.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Naam invoeren -->
+    <section id="identity" class="identity card-panel">
+      <div id="identity-ask">
+        <label for="name-input"><strong>Wie ben jij?</strong> Vul je naam in om te kunnen stemmen.</label>
+        <div class="name-row">
+          <input id="name-input" type="text" placeholder="bijv. Sanne" maxlength="24" autocomplete="off" />
+          <button id="name-save" class="btn btn-primary">Opslaan</button>
+        </div>
+      </div>
+      <div id="identity-done" hidden>
+        <span>Hoi <strong id="current-name"></strong>! 👋 Je kunt nu stemmen.</span>
+        <button id="name-change" class="btn btn-ghost">Naam wijzigen</button>
+      </div>
+    </section>
+
+    <div id="storage-note" class="note" hidden></div>
+
+    <!-- Kaart -->
+    <section class="map-section">
+      <h2>📍 Op de kaart</h2>
+      <div id="map"></div>
+      <div id="map-legend" class="map-legend"></div>
+    </section>
+
+    <!-- Sorteer / filter -->
+    <section class="controls">
+      <h2>🗳️ De opties per regio</h2>
+      <div class="controls-row">
+        <label>Sorteer binnen regio:
+          <select id="sort-select">
+            <option value="votes">Meeste stemmen</option>
+            <option value="price">Prijs (laag → hoog)</option>
+            <option value="persons">Aantal personen</option>
+          </select>
+        </label>
+        <label>Regio:
+          <select id="region-select">
+            <option value="all">Alle regio's</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- Kaarten met opties, gegroepeerd per regio -->
+    <section id="options" class="clusters"></section>
+
+    <p class="disclaimer">
+      💡 Let op: Terschelling-prijzen zijn voor <strong>3 nachten</strong> (13–16 nov), de rest voor 2 nachten.
+      Prijzen zonder bedrag zijn "op aanvraag" via de boekingssite.
+    </p>
+  </main>
+
+  <footer class="site-footer">
+    <p>Gemaakt voor ons tripje · stemmen worden live gedeeld ✨</p>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Firebase (optioneel - voor gedeelde stemmen + login). Zie README.md -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
