@@ -101,12 +101,20 @@
       input.focus();
     }
 
-    // Ingelogd blijven tussen bezoeken. Lukt dit niet (privémodus, geblokkeerde
-    // opslag), dan gaan we door met de standaardinstelling zodat inloggen blijft
-    // werken voor de huidige sessie.
-    auth
-      .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-      .catch(() => {});
+    // Kies de best werkende manier om ingelogd te blijven. Firefox (privémodus
+    // of Enhanced Tracking Protection) en Safari blokkeren soms IndexedDB; dan
+    // vallen we terug op sessie- of geheugenopslag zodat inloggen overal werkt.
+    const P = firebase.auth.Auth.Persistence;
+    const persistenceReady = (async () => {
+      for (const mode of [P.LOCAL, P.SESSION, P.NONE]) {
+        try {
+          await auth.setPersistence(mode);
+          return;
+        } catch (e) {
+          /* probeer de volgende */
+        }
+      }
+    })();
 
     // Reageer op wijzigingen in de inlogstatus (bv. al ingelogd bij herbezoek).
     auth.onAuthStateChanged((user) => {
@@ -119,9 +127,10 @@
       error.hidden = true;
       const btn = form.querySelector("button");
       const email = typeof LOGIN_EMAIL === "string" ? LOGIN_EMAIL : "";
+      const pw = input.value;
       btn.disabled = true;
-      auth
-        .signInWithEmailAndPassword(email, input.value)
+      persistenceReady
+        .then(() => auth.signInWithEmailAndPassword(email, pw))
         .then(() => {
           input.value = "";
           // Meteen openen na een geslaagde login — niet wachten op
@@ -157,6 +166,9 @@
     }
     if (code === "auth/user-not-found" || code === "auth/invalid-email") {
       return "Login niet gevonden — klopt LOGIN_EMAIL in config.js?";
+    }
+    if (code === "auth/internal-error" || code === "auth/web-storage-unsupported") {
+      return "Je browser blokkeert opslag. Zet 'Verbeterde bescherming' voor deze site uit, of probeer een gewoon (niet-privé) venster.";
     }
     return "Inloggen mislukt: " + (err && err.message ? err.message : code);
   }
