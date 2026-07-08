@@ -83,8 +83,12 @@
     const form = $("#gate-form");
     const input = $("#gate-input");
     const error = $("#gate-error");
+    const status = $("#gate-status");
     const box = gate.querySelector(".gate-box");
-    const auth = firebase.auth();
+
+    const setStatus = (msg) => {
+      if (status) status.textContent = msg || "";
+    };
 
     let unlocked = false;
     function unlock() {
@@ -95,43 +99,74 @@
       if (window._vacayMap) window._vacayMap.invalidateSize();
       onAuthed();
     }
-    function lock() {
-      gate.hidden = false;
-      document.body.classList.add("locked");
-      input.focus();
+
+    // Toon het loginscherm meteen; unlock() verbergt het na een geslaagde login.
+    gate.hidden = false;
+    document.body.classList.add("locked");
+    input.focus();
+
+    // Firebase-onderdelen kunnen door een adblocker/strenge bescherming
+    // geblokkeerd zijn. Vang dat netjes op i.p.v. stil te blijven hangen.
+    let auth = null;
+    try {
+      auth = firebase.auth();
+    } catch (e) {
+      auth = null;
     }
 
-    // Kies de best werkende manier om ingelogd te blijven. Firefox (privémodus
-    // of Enhanced Tracking Protection) en Safari blokkeren soms IndexedDB; dan
-    // vallen we terug op sessie- of geheugenopslag zodat inloggen overal werkt.
-    const P = firebase.auth.Auth.Persistence;
-    const persistenceReady = (async () => {
-      for (const mode of [P.LOCAL, P.SESSION, P.NONE]) {
-        try {
-          await auth.setPersistence(mode);
-          return;
-        } catch (e) {
-          /* probeer de volgende */
+    if (!auth) {
+      setStatus(
+        "⚠️ De beveiligde login kon niet laden (mogelijk blokkeert je browser, " +
+          "een adblocker of 'Verbeterde bescherming' het). Zet die voor deze site " +
+          "uit en herlaad, of probeer een andere browser."
+      );
+    } else {
+      setStatus("");
+      // Kies de best werkende manier om ingelogd te blijven. Firefox en Safari
+      // blokkeren soms IndexedDB; dan vallen we terug op sessie-/geheugenopslag.
+      const P = firebase.auth.Auth.Persistence;
+      var persistenceReady = (async () => {
+        for (const mode of [P.LOCAL, P.SESSION, P.NONE]) {
+          try {
+            await auth.setPersistence(mode);
+            return;
+          } catch (e) {
+            /* probeer de volgende */
+          }
         }
-      }
-    })();
+      })();
 
-    // Reageer op wijzigingen in de inlogstatus (bv. al ingelogd bij herbezoek).
-    auth.onAuthStateChanged((user) => {
-      if (user) unlock();
-      else if (!unlocked) lock();
-    });
+      auth.onAuthStateChanged((user) => {
+        if (user) unlock();
+      });
+    }
 
+    // De knop reageert ALTIJD, ook als Firebase (nog) niet beschikbaar is.
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       error.hidden = true;
       const btn = form.querySelector("button");
       const email = typeof LOGIN_EMAIL === "string" ? LOGIN_EMAIL : "";
       const pw = input.value;
-      btn.disabled = true;
 
-      // Zorg dat een geblokkeerde/hangende browseropslag het inloggen niet
-      // eeuwig laat wachten: elke stap krijgt een tijdslimiet.
+      if (!auth) {
+        try {
+          auth = firebase.auth();
+        } catch (e2) {
+          auth = null;
+        }
+        if (!auth) {
+          error.hidden = false;
+          error.textContent =
+            "De beveiligde login kon niet laden. Zet je adblocker/'Verbeterde bescherming' voor deze site uit en herlaad.";
+          shakeBox(box);
+          return;
+        }
+      }
+
+      btn.disabled = true;
+      setStatus("Bezig met inloggen…");
+
       const withTimeout = (promise, ms) =>
         Promise.race([
           Promise.resolve(promise),
@@ -140,17 +175,16 @@
           ),
         ]);
 
-      // Persistentie mag inloggen niet blokkeren (max 1,5s wachten).
-      withTimeout(persistenceReady, 1500)
+      withTimeout(persistenceReady || Promise.resolve(), 1500)
         .catch(() => {})
         .then(() => withTimeout(auth.signInWithEmailAndPassword(email, pw), 9000))
         .then(() => {
           input.value = "";
-          // Meteen openen na een geslaagde login — niet wachten op
-          // onAuthStateChanged (dat vuurt niet in elke browser betrouwbaar).
+          setStatus("Gelukt! ✅");
           unlock();
         })
         .catch((err) => {
+          setStatus("");
           error.hidden = false;
           error.textContent = friendlyAuthError(err);
           shakeBox(box);

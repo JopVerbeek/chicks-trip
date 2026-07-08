@@ -54,6 +54,7 @@ body.locked { overflow: hidden; }
   text-align: center;
 }
 .gate-error { color: #c0392b !important; font-weight: 600; margin: 0.8rem 0 0 !important; }
+.gate-status { color: #6b6b76; font-size: 0.85rem; margin: 0.7rem 0 0; min-height: 1.1em; }
 .gate-box.shake { animation: shake 0.4s ease; }
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
