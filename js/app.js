@@ -129,8 +129,21 @@
       const email = typeof LOGIN_EMAIL === "string" ? LOGIN_EMAIL : "";
       const pw = input.value;
       btn.disabled = true;
-      persistenceReady
-        .then(() => auth.signInWithEmailAndPassword(email, pw))
+
+      // Zorg dat een geblokkeerde/hangende browseropslag het inloggen niet
+      // eeuwig laat wachten: elke stap krijgt een tijdslimiet.
+      const withTimeout = (promise, ms) =>
+        Promise.race([
+          Promise.resolve(promise),
+          new Promise((_, reject) =>
+            setTimeout(() => reject({ code: "app/timeout" }), ms)
+          ),
+        ]);
+
+      // Persistentie mag inloggen niet blokkeren (max 1,5s wachten).
+      withTimeout(persistenceReady, 1500)
+        .catch(() => {})
+        .then(() => withTimeout(auth.signInWithEmailAndPassword(email, pw), 9000))
         .then(() => {
           input.value = "";
           // Meteen openen na een geslaagde login — niet wachten op
@@ -168,7 +181,10 @@
       return "Login niet gevonden — klopt LOGIN_EMAIL in config.js?";
     }
     if (code === "auth/internal-error" || code === "auth/web-storage-unsupported") {
-      return "Je browser blokkeert opslag. Zet 'Verbeterde bescherming' voor deze site uit, of probeer een gewoon (niet-privé) venster.";
+      return "Je browser blokkeert opslag. Zet 'Verbeterde bescherming' (schild-icoon) voor deze site uit, of probeer een gewoon (niet-privé) venster.";
+    }
+    if (code === "app/timeout") {
+      return "Inloggen blijft hangen — meestal door 'Verbeterde bescherming' in Firefox. Klik op het schild-icoon 🛡️ in de adresbalk, zet het voor deze site uit en herlaad de pagina.";
     }
     return "Inloggen mislukt: " + (err && err.message ? err.message : code);
   }
