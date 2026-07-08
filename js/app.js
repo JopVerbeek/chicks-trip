@@ -86,20 +86,32 @@
     const box = gate.querySelector(".gate-box");
     const auth = firebase.auth();
 
-    // Ingelogd blijven tussen bezoeken.
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    let unlocked = false;
+    function unlock() {
+      if (unlocked) return;
+      unlocked = true;
+      gate.hidden = true;
+      document.body.classList.remove("locked");
+      if (window._vacayMap) window._vacayMap.invalidateSize();
+      onAuthed();
+    }
+    function lock() {
+      gate.hidden = false;
+      document.body.classList.add("locked");
+      input.focus();
+    }
 
+    // Ingelogd blijven tussen bezoeken. Lukt dit niet (privémodus, geblokkeerde
+    // opslag), dan gaan we door met de standaardinstelling zodat inloggen blijft
+    // werken voor de huidige sessie.
+    auth
+      .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch(() => {});
+
+    // Reageer op wijzigingen in de inlogstatus (bv. al ingelogd bij herbezoek).
     auth.onAuthStateChanged((user) => {
-      if (user) {
-        gate.hidden = true;
-        document.body.classList.remove("locked");
-        if (window._vacayMap) window._vacayMap.invalidateSize();
-        onAuthed();
-      } else {
-        gate.hidden = false;
-        document.body.classList.add("locked");
-        input.focus();
-      }
+      if (user) unlock();
+      else if (!unlocked) lock();
     });
 
     form.addEventListener("submit", (e) => {
@@ -112,6 +124,9 @@
         .signInWithEmailAndPassword(email, input.value)
         .then(() => {
           input.value = "";
+          // Meteen openen na een geslaagde login — niet wachten op
+          // onAuthStateChanged (dat vuurt niet in elke browser betrouwbaar).
+          unlock();
         })
         .catch((err) => {
           error.hidden = false;
@@ -515,7 +530,16 @@
         return {
           shared: true,
           subscribe(cb) {
-            ref.on("value", (snap) => cb(snap.val() || {}));
+            ref.on(
+              "value",
+              (snap) => cb(snap.val() || {}),
+              (err) => {
+                // Meestal: database-regels staan nog op "locked". De pagina
+                // blijft bruikbaar; stemmen laden dan (nog) niet.
+                console.error("Kan stemmen niet laden:", err && err.message);
+                cb({});
+              }
+            );
           },
           toggle(id, name, on) {
             const target = firebase.database().ref("votes/" + id + "/" + sanitizeKey(name));
