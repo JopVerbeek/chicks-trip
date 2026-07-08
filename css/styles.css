@@ -13,6 +13,11 @@
 
 * { box-sizing: border-box; }
 
+/* Zorg dat het HTML-attribuut [hidden] altijd werkt, ook op elementen met een
+   eigen display-regel (zoals .gate en #identity-done). Zonder dit blijft het
+   login-scherm zichtbaar na inloggen. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
